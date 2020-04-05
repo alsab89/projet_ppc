@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.6
 # -*- coding: utf-8 -*-
 
-import random, sys, os, pygame, sysv_ipc, pickle
+import random, sys, os, pygame, sysv_ipc, pickle, multiprocessing, threading, time
 from pygame.locals import *
 
 # ----------------------- Constants ------------------------------
@@ -15,13 +15,14 @@ key2 = 538
 key3 = 549
 key4 = 551
 pid = os.getpid()
+state=True
 
 # ----------------------- Functions ------------------------------
 
 class card_board(pygame.sprite.Sprite):   #The card on the board, an object
     def __init__(self,color,number):
         pygame.sprite.Sprite.__init__(self)
-        self.image=pygame.image.load("./divers/"+color+"_"+number+".jpg")
+        self.image=pygame.image.load("/home/user1/Documents/PPC/repogit/divers/"+color+"_"+str(number)+".JPG")
         self.rect=self.image.get_rect()
         self.rect.centerx=3*COLON #middle of the screen
         self.rect.top=90 #first line
@@ -29,10 +30,19 @@ class card_board(pygame.sprite.Sprite):   #The card on the board, an object
 class card(pygame.sprite.Sprite):   #Each card will be an object displayed on the screen
     def __init__(self,lin,col,color,number):
         pygame.sprite.Sprite.__init__(self)
-        self.image=pygame.image.load("./divers/"+color+"_"+number+".jpg")
+        self.image=pygame.image.load("/home/user1/Documents/PPC/repogit/divers/"+color+"_"+str(number)+".JPG")
         self.rect=self.image.get_rect()
         self.rect.centerx=col*COLON #col = col+270
         self.rect.top=lin*LINE #lin = lin+180
+        self.color=color
+        self.number=number
+    def check_click(self,mouse):
+        if self.rect.collidepoint(pygame.mouse.get_pos()):
+            return True
+        else:
+            pass
+    def get_card(self):
+        return self.color,self.number
 
 def distribution(pile):  #The player picks 5 cards to compose his hand
     player = []
@@ -42,34 +52,31 @@ def distribution(pile):  #The player picks 5 cards to compose his hand
     return (player,pile)
 
 def pick(pile):
-    board = []
     pos = random.randint(0,(len(pile)-1))
-    board.append(pile.pop(pos))
+    board = pile.pop(pos)
     return (board,pile)
 
 # ----------------------- Pygame code ------------------------------
 
 def display():
 
-    #Change background
-    fond = pygame.image.load("./divers/wallpaper.jpg").convert()
-    fond = pygame.transform.scale(fond,size)
-    screen.blit(fond, (0,0))  #We paste the image in the window
-    hello_msg = pygame.image.load("./divers/banner.jpg").convert()
-    screen.blit(hello_msg, (0,0))
-
-    print("----------------------")
-    print("Your distribution is : ",player)
-    print("----------------------")
-
     semaphore_board.acquire()
     board_card = pickle.loads(sm_board.read())
     semaphore_board.release()
 
-    board_color=board_card[0]
-    board_number=board_card[1]
+    board_color=board_card[0][0]
+    board_number=board_card[0][1]
     board_card=card_board(board_color,board_number)
     groupe_board.add(board_card) #We superpose the new object each time, but that's not a problem..
+
+    #Change background
+    fond = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/wallpaper.jpg").convert()
+    fond = pygame.transform.scale(fond,size)
+    screen.blit(fond, (0,0))  #We paste the image in the window
+    hello_msg = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/banner.JPG").convert()
+    screen.blit(hello_msg, (0,0))
+
+
 
     groupe_cards.update() #Each card is updated and drawn on the screen
     groupe_board.update()
@@ -82,25 +89,89 @@ def display():
 
 def press_key():
 
+    mq = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
+
+    pid = os.getpid()
     clock = pygame.time.Clock()
+
     while True:
         clock.tick(15) # Loop is repeating each 15 seconds
         # Event detection :
         for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN: #a mouse click
-                print("Mouse detected ...")
-                x,y = pygame.mouse.get_pos() #we get the click's position on the screen
-                for card_check in groupe_cards:
-                    which_card = card_check.get_rect()
-                    if which_check.rect.collidepoint(x,y):
-                        #groupe_cards.remove(card_check)
-                        print("ok")
-            elif event.type == pygame.KEYDOWN: # C'est une touche clavier
+            if event.type == pygame.KEYDOWN: # C'est une touche clavier
                 if event.key == pygame.K_ESCAPE:
                     print("End of the game. Goodbye.")
+                    global state
+                    state=False
                     sys.exit()      # Sortie du jeu
-                elif event.key == pygame.K_RIGHT:
-                    print("droite")
+            elif event.type == pygame.MOUSEBUTTONDOWN: #a mouse click
+                #x,y = pygame.mouse.get_pos() #we get the click's position on the screen
+                for card_check in groupe_cards:
+                    if card_check.check_click(event.pos):
+                        card_color,card_number=card_check.get_card()
+                        card_to_lay=(card_color,card_number)
+                        info = ["lay",pid,[card_to_lay]]    # MQ : ( [action,player,card] , type )
+                        msg = pickle.dumps(info)
+                        mq.send(msg, type=1)
+
+def listen_mq(semaphore_pile,semaphore_board):
+
+    try:
+        mq = sysv_ipc.MessageQueue(key)
+    except:
+        print("Can not connect to message queue ", key, ", terminating.")
+        sys.exit(1)
+
+    while True:
+
+        msg, t = mq.receive(type=pid)
+
+        #Le premier player qui reçoit le message le supprimer => il faut que le type soit le pid de destination
+
+        semaphore_pile.acquire()
+        pile = pickle.loads(sm_pile.read())
+        semaphore_pile.release()
+        semaphore_board.acquire()
+        board = pickle.loads(sm_board.read())
+        semaphore_board.release()
+
+        msg_decode = pickle.loads(msg)
+        action = msg_decode[0]    # MQ : ( [action,card,issue] , type )
+        issue = msg_decode[2]
+
+        if (action=="lay") and (issue == "OK"):
+            card_to_delete = msg_decode[1]  #Server resend the layed card
+            #player.remove(card_to_delete)
+
+            for card_fetch in groupe_cards:
+                card_color,card_number=card_fetch.get_card()
+                if card_color==card_to_delete[0][0] and card_number==card_to_delete[0][1]:
+                    groupe_cards.remove(card_fetch)
+
+            print("Good job ! One less card.")
+            display()
+
+        elif (action=="last") and (issue == "OK"):
+            print("!! YOU WIN !! Congratulations.")
+            global state
+            state=False
+            sys.exit()
+
+        else:
+            picked_card, pile_update = pick(pile)
+            #player.append(picked_card[0])
+            card_color=picked_card[0]
+            card_number=picked_card[1]
+
+            graphic_card=card(3,4,card_color,str(card_number))
+            groupe_cards.add(graphic_card)
+
+            semaphore_pile.acquire()
+            sm_pile.write(pickle.dumps(pile_update))
+            semaphore_pile.release()
+
+            print("Shit.... One more.")
+            display()
 
 
 if __name__ == '__main__':
@@ -151,12 +222,12 @@ if __name__ == '__main__':
     # ----------------------- Threads to manage the functions ------------------------------
 
     thread1 = threading.Thread(target=listen_mq,args=(semaphore_pile,semaphore_board,)) #MQ management
-    thread2 = threading.Thread(target=press_key,args=(semaphore_board,)) #Keyboard entries management
+    thread2 = threading.Thread(target=press_key) #Keyboard entries management
 
     thread1.start()
     thread2.start()
 
-    while True:
+    while state:
         pass
 
     sys.exit()

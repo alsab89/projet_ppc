@@ -73,7 +73,7 @@ if __name__ == '__main__':
                     semaphore_board.acquire()
                     sm_board.write(pickle.dumps(card)) # Board update
                     semaphore_board.release()
-                    msg = pickle.dumps(["lay",card[0],"OK"])
+                    msg = pickle.dumps(["lay",card,"OK"])
                     mq.send(msg, type = player)
                 else:
                     msg = pickle.dumps(["lay",card,"NOK"])
