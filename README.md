@@ -40,7 +40,7 @@ Vous avez deux possibilités dans le jeu :
    - Vous avez gagné
    - Votre adversaire a gagné
    
-  Une carte sera automatiquement piochée toutes les 5 secondes si vous aucune carte de votre main n'est posée.
+  Une carte sera automatiquement piochée toutes les 5 secondes si aucune carte de votre main n'est posée.
 
 
 
