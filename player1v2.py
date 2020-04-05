@@ -16,6 +16,7 @@ key3 = 549
 key4 = 551
 pid = os.getpid()
 state=True
+timer_state=True
 
 # ----------------------- Functions ------------------------------
 
@@ -66,14 +67,20 @@ def pick(pile):
     pile_check = pickle.loads(sm_pile.read())
     semaphore_pile.release()
     if len(pile_check)==1:
+        fond = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/lose.png").convert()
+        fond = pygame.transform.scale(fond,size)
+        screen.blit(fond, (0,0))  #We paste the image in the window
         print("End of the game. No more cards in the pile.")
-        global state
-        state=False
-        sys.exit()
+        # global state
+        # state=False
+        # sys.exit()
     else:
         pos = random.randint(0,(len(pile)-1))
         board = pile.pop(pos)
-        return (board,pile)
+        semaphore_pile.acquire()
+        sm_pile.write(pickle.dumps(pile)) #pile update
+        semaphore_pile.release()
+        return board
 
 # ----------------------- Pygame code ------------------------------
 
@@ -83,7 +90,7 @@ def display():
         groupe_cards.remove(card_fetch)
 
     for i in range(len(player)):
-        if i<=5:
+        if i<=4:
             card_color=player[i][0]
             card_number=player[i][1]
             graphic_card=card(3,i+1,card_color,str(card_number))
@@ -116,7 +123,7 @@ def display_board():
         groupe_cards.remove(card_fetch)
 
     for i in range(len(player)):
-        if i<=5:
+        if i<=4:
             card_color=player[i][0]
             card_number=player[i][1]
             graphic_card=card(3,i+1,card_color,str(card_number))
@@ -163,15 +170,19 @@ def press_key():
     pid = os.getpid()
     clock = pygame.time.Clock()
 
-    while True:
-        clock.tick(15) # Loop is repeating each 15 seconds
+    global state
+    while state:
+        clock.tick(15) # Loop is repeating 15 times per second
         # Event detection :
         for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN: # C'est une touche clavier
+            if event.type == pygame.USEREVENT:
+                picked_card = pick(pile)
+                player.append(picked_card)
+                display()
+            elif event.type == pygame.KEYDOWN: # C'est une touche clavier
                 if event.key == pygame.K_ESCAPE:
                     #sys.exit()      # Sortie du jeu
                     print("End of the game. Goodbye.")
-                    global state
                     state=False
                     pygame.quit()
             elif event.type == pygame.MOUSEBUTTONDOWN: #a mouse click
@@ -191,8 +202,9 @@ def press_key():
                             info = ["lay",pid,[card_to_lay]]    # MQ : ( [action,player,card] , type )
                             msg = pickle.dumps(info)
                             mq.send(msg, type=1)
+                pygame.init()
 
-def listen_mq(semaphore_pile,semaphore_board):
+def listen_mq():
 
     try:
         mq = sysv_ipc.MessageQueue(key)
@@ -214,7 +226,6 @@ def listen_mq(semaphore_pile,semaphore_board):
         action = msg_decode[0]    # MQ : ( [action,card,issue] , type ) -> ( [str,[(str,str)],str] , pid ) !! number = str here
         issue = msg_decode[2]
 
-        print(action,issue)
         if (action=="lay") and (issue == "OK"):
             card_to_delete = msg_decode[1]  #Server resend the layed card
             card_color = card_to_delete[0][0]
@@ -226,23 +237,24 @@ def listen_mq(semaphore_pile,semaphore_board):
             display_board()
 
         elif (action=="last") and (issue == "OK"):
+            fond = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/win.jpg").convert()
+            fond = pygame.transform.scale(fond,size)
+            screen.blit(fond, (0,0))  #We paste the image in the window
+            pygame.display.flip()
             print("!! YOU WIN !! Congratulations.")
-            global state
-            state=False
-            pygame.quit()
+            break
+            # global state
+            # state=False
+            #pygame.quit()
 
         else:
-            picked_card, pile_update = pick(pile)
+            picked_card = pick(pile)
             player.append(picked_card)
-            print(player)
-
-            semaphore_pile.acquire()
-            sm_pile.write(pickle.dumps(pile_update))
-            semaphore_pile.release()
 
             print("Shit.... One more.")
             display()
 
+    sys.exit()
 
 if __name__ == '__main__':
     #player1 = [('blue', 10), ('red', 8), ('blue', 3), ('red', 10), ('red', 4)]
@@ -291,11 +303,13 @@ if __name__ == '__main__':
 
     # ----------------------- Threads to manage the functions ------------------------------
 
-    thread1 = threading.Thread(target=listen_mq,args=(semaphore_pile,semaphore_board,)) #MQ management
+    thread1 = threading.Thread(target=listen_mq) #MQ management
     thread2 = threading.Thread(target=press_key) #Keyboard entries management
 
     thread1.start()
     thread2.start()
+
+    pygame.time.set_timer(pygame.USEREVENT, 5000) #We create an event which takes place every 5 seconds
 
     while state:
         pass
