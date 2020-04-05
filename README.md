@@ -4,7 +4,7 @@ Ahmed Haouchette & Alem Sabanovic - 3TCA
 
 ## Start
 
-Ce dépôt est public ; si vous souhaitez tester le code directement sur votre machine, exécuter la commande suivante (vérifier que l'URL n'a pas changé) :
+Si vous souhaitez tester le code directement sur votre machine, exécuter la commande suivante (vérifier que l'URL n'a pas changé) :
 
 ```
 git clone https://github.com/alsab89/projet_ppc.git
