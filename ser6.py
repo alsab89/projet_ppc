@@ -54,44 +54,40 @@ if __name__ == '__main__':
         msg, t = mq.receive(type=1)
 
         #Le premier player qui reçoit le message le supprimer => il faut que le type soit le pid de destination
-        if t == 1:
+        semaphore_board.acquire()
+        board_card = pickle.loads(sm_board.read())
+        semaphore_board.release()
+        msg_decode = pickle.loads(msg)
 
-            semaphore_board.acquire()
-            board_card = pickle.loads(sm_board.read())
-            semaphore_board.release()
-            msg_decode = pickle.loads(msg)
-
-            action = msg_decode[0]    # MQ : ( [action,player,card] , type )
-            player = msg_decode[1]
+        action = msg_decode[0]    # MQ : ( [action,player,card] , type ) -> ( [str,pid,[(str,int)]] , 1 )
+        player = msg_decode[1]
 
 
-            if action == "lay": #Player lay a card
+        if action == "lay": #Player lay a card
 
-                card = msg_decode[2]
+            card = msg_decode[2]
 
-                if (card[0][0]==board_card[0][0]) or (card[0][1]==board_card[0][1]):  #Check
-                    semaphore_board.acquire()
-                    sm_board.write(pickle.dumps(card)) # Board update
-                    semaphore_board.release()
-                    msg = pickle.dumps(["lay",card,"OK"])
-                    mq.send(msg, type = player)
-                else:
-                    msg = pickle.dumps(["lay",card,"NOK"])
-                    mq.send(msg, type = player)
+            if (card[0][0]==board_card[0][0]) or (card[0][1]==str(board_card[0][1])):  #Check
+                semaphore_board.acquire()
+                sm_board.write(pickle.dumps(card)) # Board update
+                semaphore_board.release()
+                msg = pickle.dumps(["lay",card,"OK"])
+                mq.send(msg, type = player)
+            else:
+                msg = pickle.dumps(["lay",card,"NOK"])
+                mq.send(msg, type = player)
 
-            elif action == "last":   #It is the last card of the player
+        elif action == "last":   #It is the last card of the player
 
-                card = msg_decode[2]
+            card = msg_decode[2]
 
-                if (card[0][0]==board_card[0][0]) or (card[0][1]==board_card[0][1]):  #Check
-                    msg = pickle.dumps(["last",card,"OK"])
-                    mq.send(msg, type = player)
-                    break
-                else:
-                    msg = pickle.dumps(["last",card,"NOK"])
-                    mq.send(msg, type = player)
-
-
+            if (card[0][0]==board_card[0][0]) or (card[0][1]==board_card[0][1]):  #Check
+                msg = pickle.dumps(["last",card,"OK"])
+                mq.send(msg, type = player)
+                break
+            else:
+                msg = pickle.dumps(["last",card,"NOK"])
+                mq.send(msg, type = player)
 
 
     sm_pile.detach()

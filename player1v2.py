@@ -6,7 +6,7 @@ from pygame.locals import *
 
 # ----------------------- Constants ------------------------------
 
-COLON = 108  #5 colons => 216 px per colon
+COLON = 216  #5 colons => 216 px per colon
 LINE = 90  #4 lines => 180 px per line
 
 key = 516
@@ -26,6 +26,15 @@ class card_board(pygame.sprite.Sprite):   #The card on the board, an object
         self.rect=self.image.get_rect()
         self.rect.centerx=3*COLON #middle of the screen
         self.rect.top=90 #first line
+        self.color=color
+        self.number=number
+    def check_click(self,mouse):
+        if self.rect.collidepoint(pygame.mouse.get_pos()):
+            return True
+        else:
+            pass
+    def get_card(self):
+        return self.color,self.number
 
 class card(pygame.sprite.Sprite):   #Each card will be an object displayed on the screen
     def __init__(self,lin,col,color,number):
@@ -60,14 +69,15 @@ def pick(pile):
 
 def display():
 
-    semaphore_board.acquire()
-    board_card = pickle.loads(sm_board.read())
-    semaphore_board.release()
+    for card_fetch in groupe_cards:
+        groupe_cards.remove(card_fetch)
 
-    board_color=board_card[0][0]
-    board_number=board_card[0][1]
-    board_card=card_board(board_color,board_number)
-    groupe_board.add(board_card) #We superpose the new object each time, but that's not a problem..
+    for i in range(len(player)):
+        card_color=player[i][0]
+        card_number=player[i][1]
+        graphic_card=card(3,i+1,card_color,str(card_number))
+        groupe_cards.add(graphic_card)
+        i+=1
 
     #Change background
     fond = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/wallpaper.jpg").convert()
@@ -76,7 +86,44 @@ def display():
     hello_msg = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/banner.JPG").convert()
     screen.blit(hello_msg, (0,0))
 
+    groupe_cards.update() #Each card is updated and drawn on the screen
+    groupe_board.update()
+    groupe_cards.draw(screen)
+    groupe_board.draw(screen)
 
+    # Screen actualization
+    pygame.display.flip()
+
+def display_board():
+
+    for card_fetch in groupe_cards:
+        groupe_cards.remove(card_fetch)
+
+    for i in range(len(player)):
+        card_color=player[i][0]
+        card_number=player[i][1]
+        graphic_card=card(3,i+1,card_color,str(card_number))
+        groupe_cards.add(graphic_card)
+        i+=1
+
+    for board_fetch in groupe_board:
+        groupe_board.remove(board_fetch)
+
+    semaphore_board.acquire()
+    board_card = pickle.loads(sm_board.read())
+    semaphore_board.release()
+
+    board_color=board_card[0][0]
+    board_number=board_card[0][1]
+    board_card=card_board(board_color,board_number)
+    groupe_board.add(board_card)
+
+    #Change background
+    fond = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/wallpaper.jpg").convert()
+    fond = pygame.transform.scale(fond,size)
+    screen.blit(fond, (0,0))  #We paste the image in the window
+    hello_msg = pygame.image.load("/home/user1/Documents/PPC/repogit/divers/banner.JPG").convert()
+    screen.blit(hello_msg, (0,0))
 
     groupe_cards.update() #Each card is updated and drawn on the screen
     groupe_board.update()
@@ -100,19 +147,28 @@ def press_key():
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN: # C'est une touche clavier
                 if event.key == pygame.K_ESCAPE:
+                    #sys.exit()      # Sortie du jeu
                     print("End of the game. Goodbye.")
                     global state
                     state=False
-                    sys.exit()      # Sortie du jeu
+                    break
             elif event.type == pygame.MOUSEBUTTONDOWN: #a mouse click
-                #x,y = pygame.mouse.get_pos() #we get the click's position on the screen
-                for card_check in groupe_cards:
-                    if card_check.check_click(event.pos):
-                        card_color,card_number=card_check.get_card()
-                        card_to_lay=(card_color,card_number)
-                        info = ["lay",pid,[card_to_lay]]    # MQ : ( [action,player,card] , type )
-                        msg = pickle.dumps(info)
-                        mq.send(msg, type=1)
+                if len(player)==1:
+                    for card_check in groupe_cards:
+                        if card_check.check_click(event.pos):
+                            card_color,card_number=card_check.get_card()
+                            card_to_lay=(card_color,card_number)
+                            info = ["last",pid,[card_to_lay]]    # MQ : ( [action,player,card] , type )
+                            msg = pickle.dumps(info)
+                            mq.send(msg, type=1)
+                else:
+                    for card_check in groupe_cards:
+                        if card_check.check_click(event.pos):
+                            card_color,card_number=card_check.get_card()
+                            card_to_lay=(card_color,card_number)
+                            info = ["lay",pid,[card_to_lay]]    # MQ : ( [action,player,card] , type )
+                            msg = pickle.dumps(info)
+                            mq.send(msg, type=1)
 
 def listen_mq(semaphore_pile,semaphore_board):
 
@@ -131,40 +187,33 @@ def listen_mq(semaphore_pile,semaphore_board):
         semaphore_pile.acquire()
         pile = pickle.loads(sm_pile.read())
         semaphore_pile.release()
-        semaphore_board.acquire()
-        board = pickle.loads(sm_board.read())
-        semaphore_board.release()
 
         msg_decode = pickle.loads(msg)
-        action = msg_decode[0]    # MQ : ( [action,card,issue] , type )
+        action = msg_decode[0]    # MQ : ( [action,card,issue] , type ) -> ( [str,[(str,str)],str] , pid ) !! number = str here
         issue = msg_decode[2]
 
+        print(action,issue)
         if (action=="lay") and (issue == "OK"):
             card_to_delete = msg_decode[1]  #Server resend the layed card
-            #player.remove(card_to_delete)
-
-            for card_fetch in groupe_cards:
-                card_color,card_number=card_fetch.get_card()
-                if card_color==card_to_delete[0][0] and card_number==card_to_delete[0][1]:
-                    groupe_cards.remove(card_fetch)
+            card_color = card_to_delete[0][0]
+            card_number = int(card_to_delete[0][1]) #!!
+            card_to_delete = (card_color,card_number)
+            player.remove(card_to_delete)
 
             print("Good job ! One less card.")
-            display()
+            display_board()
 
         elif (action=="last") and (issue == "OK"):
             print("!! YOU WIN !! Congratulations.")
             global state
             state=False
-            sys.exit()
+            break
+            #sys.exit()
 
         else:
             picked_card, pile_update = pick(pile)
-            #player.append(picked_card[0])
-            card_color=picked_card[0]
-            card_number=picked_card[1]
-
-            graphic_card=card(3,4,card_color,str(card_number))
-            groupe_cards.add(graphic_card)
+            player.append(picked_card)
+            print(player)
 
             semaphore_pile.acquire()
             sm_pile.write(pickle.dumps(pile_update))
@@ -217,7 +266,7 @@ if __name__ == '__main__':
 
     groupe_board = pygame.sprite.Group()
 
-    display()
+    display_board()
 
     # ----------------------- Threads to manage the functions ------------------------------
 
