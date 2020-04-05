@@ -4,9 +4,15 @@ Ahmed Haouchette & Alem Sabanovic - 3TCA
 
 ## Start
 
+Ce dépôt est public ; si vous souhaitez tester le code directement sur votre machine, exécuter la commande suivante (vérifier que l'URL n'a pas changé) :
+
 ```
-Ce dépôt est public ; vous pouvez commencer par un git clone si vous souhaitez tester le code sur votre machine
+git clone https://github.com/alsab89/projet_ppc.git
 ```
+
+Un répertoire sera crée sur votre machine. Il faut un compte GitHub au préalable.
+
+## Usage
 
 Il y a 3 fichiers et 1 dossier utiles pour lancer le jeu :
   - server.py
@@ -14,14 +20,14 @@ Il y a 3 fichiers et 1 dossier utiles pour lancer le jeu :
   - player2.py (=player1)
  -> player3.py est une version du jeu sur terminal
 
-## Usage
-
 Codé en python3.6
 Exécuté de la façon suivante :
 
 ```
 python3 ./server.py
 ```
+
+!! Selon vos ressources, il peut arriver que la taille indiquée en argument dans la création de la shared memory ne correspond pas. !!
 
 ### Description
 
