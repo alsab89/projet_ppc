@@ -46,11 +46,11 @@ Pour l'implémentation en terminal (player3.py) :
    
   Une carte sera automatiquement piochée toutes les 5 secondes si aucune carte de votre main n'est posée ; attention au timer !
   
-  ### Mécanisme
+ ### Mécanisme
   
-  Il y a 2 threads :
-    - Un qui gère les entrées clavier
-    - Un qui gère la message queue (qui communique avec le process serveur)
+ Il y a 2 threads :
+   - Un qui gère les entrées clavier
+   - Un qui gère la message queue (qui communique avec le process serveur)
     
 ## Notes
  
