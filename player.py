@@ -23,7 +23,7 @@ timer_state=True
 class card_board(pygame.sprite.Sprite):   #The card on the board, an object
     def __init__(self,color,number):
         pygame.sprite.Sprite.__init__(self)
-        self.image=pygame.image.load("/home/user1/Documents/PPC/repogit/divers/"+color+"_"+str(number)+".JPG")
+        self.image=pygame.image.load("./divers/"+color+"_"+str(number)+".JPG")
         self.rect=self.image.get_rect()
         self.rect.centerx=(3*COLON)-(COLON/2) #middle of the screen
         self.rect.top=(1*LINE)-LINE+50  #second line
