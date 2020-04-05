@@ -16,12 +16,25 @@ Il y a 3 fichiers et 1 dossier utiles pour lancer le jeu :
 
 ## Usage
 
-```python
-import foobar
+Codé en python3.6
+Exécuté de la façon suivante :
 
-foobar.pluralize('word') # returns 'words'
-foobar.pluralize('goose') # returns 'geese'
-foobar.singularize('phenomena') # returns 'phenomenon'
 ```
+python3 ./server.py
+```
+
+### Description
+
+Vous avez deux possibilités dans le jeu :
+  - Quitter, en appuyant sur Echap
+  - Cliquer sur une carte, pour la poser sur le tapis
+  
+ 3 interruptions possibles :
+   - Il n'y a plus de cartes dans la pile
+   - Vous avez gagné
+   - Votre adversaire a gagné
+   
+  Une carte sera automatiquement piochée toutes les 5 secondes si vous aucune carte de votre main n'est posée.
+
 
 
