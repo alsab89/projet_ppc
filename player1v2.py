@@ -6,8 +6,8 @@ from pygame.locals import *
 
 # ----------------------- Constants ------------------------------
 
-COLON = 216  #5 colons => 216 px per colon
-LINE = 90  #4 lines => 180 px per line
+COLON = 196 #216  #5 colons => 216 px per colon
+LINE = 155 #180  #4 lines => 180 px per line
 
 key = 516
 key1 = 527
@@ -24,8 +24,8 @@ class card_board(pygame.sprite.Sprite):   #The card on the board, an object
         pygame.sprite.Sprite.__init__(self)
         self.image=pygame.image.load("/home/user1/Documents/PPC/repogit/divers/"+color+"_"+str(number)+".JPG")
         self.rect=self.image.get_rect()
-        self.rect.centerx=3*COLON #middle of the screen
-        self.rect.top=90 #first line
+        self.rect.centerx=(3*COLON)-(COLON/2) #middle of the screen
+        self.rect.top=(1*LINE)-LINE+50  #second line
         self.color=color
         self.number=number
     def check_click(self,mouse):
@@ -41,8 +41,8 @@ class card(pygame.sprite.Sprite):   #Each card will be an object displayed on th
         pygame.sprite.Sprite.__init__(self)
         self.image=pygame.image.load("/home/user1/Documents/PPC/repogit/divers/"+color+"_"+str(number)+".JPG")
         self.rect=self.image.get_rect()
-        self.rect.centerx=col*COLON #col = col+270
-        self.rect.top=lin*LINE #lin = lin+180
+        self.rect.centerx=(col*COLON)-(COLON/2)
+        self.rect.top=(lin*LINE)-LINE-20
         self.color=color
         self.number=number
     def check_click(self,mouse):
@@ -61,9 +61,19 @@ def distribution(pile):  #The player picks 5 cards to compose his hand
     return (player,pile)
 
 def pick(pile):
-    pos = random.randint(0,(len(pile)-1))
-    board = pile.pop(pos)
-    return (board,pile)
+
+    semaphore_pile.acquire()
+    pile_check = pickle.loads(sm_pile.read())
+    semaphore_pile.release()
+    if len(pile_check)==1:
+        print("End of the game. No more cards in the pile.")
+        global state
+        state=False
+        sys.exit()
+    else:
+        pos = random.randint(0,(len(pile)-1))
+        board = pile.pop(pos)
+        return (board,pile)
 
 # ----------------------- Pygame code ------------------------------
 
@@ -73,10 +83,16 @@ def display():
         groupe_cards.remove(card_fetch)
 
     for i in range(len(player)):
-        card_color=player[i][0]
-        card_number=player[i][1]
-        graphic_card=card(3,i+1,card_color,str(card_number))
-        groupe_cards.add(graphic_card)
+        if i<=5:
+            card_color=player[i][0]
+            card_number=player[i][1]
+            graphic_card=card(3,i+1,card_color,str(card_number))
+            groupe_cards.add(graphic_card)
+        else:
+            card_color=player[i][0]
+            card_number=player[i][1]
+            graphic_card=card(4.2,i-4,card_color,str(card_number))
+            groupe_cards.add(graphic_card)
         i+=1
 
     #Change background
@@ -100,10 +116,16 @@ def display_board():
         groupe_cards.remove(card_fetch)
 
     for i in range(len(player)):
-        card_color=player[i][0]
-        card_number=player[i][1]
-        graphic_card=card(3,i+1,card_color,str(card_number))
-        groupe_cards.add(graphic_card)
+        if i<=5:
+            card_color=player[i][0]
+            card_number=player[i][1]
+            graphic_card=card(3,i+1,card_color,str(card_number))
+            groupe_cards.add(graphic_card)
+        else:
+            card_color=player[i][0]
+            card_number=player[i][1]
+            graphic_card=card(4.2,i-5,card_color,str(card_number))
+            groupe_cards.add(graphic_card)
         i+=1
 
     for board_fetch in groupe_board:
@@ -151,7 +173,7 @@ def press_key():
                     print("End of the game. Goodbye.")
                     global state
                     state=False
-                    break
+                    pygame.quit()
             elif event.type == pygame.MOUSEBUTTONDOWN: #a mouse click
                 if len(player)==1:
                     for card_check in groupe_cards:
@@ -207,8 +229,7 @@ def listen_mq(semaphore_pile,semaphore_board):
             print("!! YOU WIN !! Congratulations.")
             global state
             state=False
-            break
-            #sys.exit()
+            pygame.quit()
 
         else:
             picked_card, pile_update = pick(pile)
