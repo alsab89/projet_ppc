@@ -108,8 +108,8 @@ def press_key(semaphore_board):
     pile = pickle.loads(sm_pile.read())
     semaphore_pile.release()
 
-    timer = threading.Timer(10.0, pick_timer(pile))
-    timer.start()
+    #timer = threading.Timer(10.0, pick_timer(pile))
+    #timer.start()
 
     while True:
 
